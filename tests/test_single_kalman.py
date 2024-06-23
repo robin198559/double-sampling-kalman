@@ -2,10 +2,7 @@ import unittest
 
 import numpy as np
 
-from double_sampling_kalman.single_kalman.methods import (
-    discrete_kalman_filter,
-)
-from double_sampling_kalman.single_kalman.validation import validate_input_dimension
+from double_sampling_kalman.single_kalman.api import discrete_kalman_filter_numpy_runner
 from tests.test_utility import get_simple_test_case
 
 
@@ -64,17 +61,7 @@ class TestSingleKalman(unittest.TestCase):
         initial_x0 = np.array([0.3, 0.7]).reshape((2, 1))
         initial_p0 = np.array([[0.01, 0.01], [0.01, 0.01]])
 
-        validate_input_dimension(
-            observations=observations,
-            system_matrices=system_matrices,
-            measurement_matrices=measurement_matrices,
-            model_error_covariance_matrix=model_error_covariance_matrix,
-            observation_error_covariance=observation_error_covariance_matrix,
-            initial_x0=initial_x0,
-            initial_p0=initial_p0,
-        )
-
-        result = discrete_kalman_filter(
+        result = discrete_kalman_filter_numpy_runner(
             system_matrices=system_matrices,
             measurement_matrices=measurement_matrices,
             observations=observations,

@@ -2,16 +2,19 @@ from typing import Optional
 
 import numpy as np
 
+from double_sampling_kalman.utility.info import log_function
 
+
+@log_function
 def validate_input_dimension(
-    observations: np.array,
-    system_matrices: np.array,
-    measurement_matrices: np.array,
+    observations: np.ndarray,
+    system_matrices: np.ndarray,
+    measurement_matrices: np.ndarray,
     model_error_covariance_matrix: np.ndarray,
-    observation_error_covariance: np.array,
-    initial_x0: np.array,
-    initial_p0: np.array,
-    control_vectors: Optional[np.array] = None,
+    observation_error_covariance: np.ndarray,
+    initial_x0: np.ndarray,
+    initial_p0: np.ndarray,
+    control_vectors: Optional[np.ndarray] = None,
 ):
     """
 
