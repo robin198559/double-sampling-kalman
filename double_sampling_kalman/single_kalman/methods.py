@@ -2,11 +2,12 @@ from typing import Optional
 
 import numpy as np
 
+from double_sampling_kalman.single_kalman.objects import SingleKalmanOutput
 from double_sampling_kalman.utility.info import log_function
 
 
 @log_function
-def _discrete_kalman_filter(
+def _discrete_kalman_filter_core(
     observations: np.ndarray,
     system_matrices: np.ndarray,
     measurement_matrices: np.ndarray,
@@ -15,7 +16,7 @@ def _discrete_kalman_filter(
     initial_x0: np.ndarray,
     initial_p0: np.ndarray,
     control_vectors: Optional[np.ndarray] = None,
-) -> np.ndarray:
+) -> SingleKalmanOutput:
     """
     core function of kalman filter. It has to be for loop because it is iterative. No way to optimize
 
@@ -27,7 +28,7 @@ def _discrete_kalman_filter(
     :param initial_x0:
     :param initial_p0:
     :param control_vectors:
-    :return: solution: N x M x 1
+    :return: solution: N x M, xt, pt
     """
     number_of_observations = observations.shape[0]
     number_of_system_components = initial_x0.shape[0]
@@ -39,17 +40,16 @@ def _discrete_kalman_filter(
 
     # initialize variables
     x_solution = []
-    xt_1 = initial_x0
-    pt_1 = initial_p0
+    xt_next, pt_next, pt = initial_x0, initial_p0, initial_p0
     identity = np.identity(number_of_system_components)
 
     for t in range(number_of_observations):  # main kalman loop
         measurement_matrix = measurement_matrices[t]
         system_matrix = system_matrices[t]
         # predict
-        xt_hat_ = np.matmul(system_matrix, xt_1) + control_vectors[t]
+        xt_hat_ = np.matmul(system_matrix, xt_next) + control_vectors[t]
         pt = (
-            np.matmul(system_matrix, np.matmul(pt_1, system_matrix))
+            np.matmul(system_matrix, np.matmul(pt_next, system_matrix))
             + model_error_covariance_matrix
         )
         # correct
@@ -66,9 +66,12 @@ def _discrete_kalman_filter(
         # save the data
         x_solution.append(xt_hat)
         # for next iteration
-        xt_1 = np.array(xt_hat)
-        pt_1 = np.array(pt)
+        xt_next = np.array(xt_hat)
+        pt_next = np.array(pt)
     # Output
     output = np.array(x_solution)
     assert output.shape == (number_of_observations, number_of_system_components, 1)
-    return output
+    return SingleKalmanOutput(
+        estimation=output,
+        latest_error_matrix=pt,
+    )

@@ -2,14 +2,14 @@ from typing import Optional
 
 import numpy as np
 
-from double_sampling_kalman.single_kalman.methods import _discrete_kalman_filter_core
-from double_sampling_kalman.single_kalman.objects import SingleKalmanOutput
+from double_sampling_kalman.double_kalman.methods import _double_kalman_filter_core
+from double_sampling_kalman.double_kalman.objects import DoubleKalmanOutput
 from double_sampling_kalman.single_kalman.validation import validate_input_dimension
 from double_sampling_kalman.utility.info import log_function
 
 
 @log_function
-def discrete_kalman_filter_numpy_runner(
+def double_kalman_filter_numpy_runner(
     observations: np.ndarray,
     system_matrices: np.ndarray,
     measurement_matrices: np.ndarray,
@@ -19,9 +19,9 @@ def discrete_kalman_filter_numpy_runner(
     initial_p0: np.ndarray,
     control_vectors: Optional[np.ndarray] = None,
     validate_input: bool = True,
-) -> SingleKalmanOutput:
+) -> DoubleKalmanOutput:
     """
-    Calculate one run of kalman filter. Inputs are all numpy.ndarray
+    Calculate one run of forward kalman filter, and a backward filter. Inputs are all numpy.ndarray
     Returns N x M output
     Assuming (N, I) observations, (M, 1) system components
 
@@ -49,7 +49,7 @@ def discrete_kalman_filter_numpy_runner(
             control_vectors=control_vectors,
         )
 
-    result = _discrete_kalman_filter_core(
+    result = _double_kalman_filter_core(
         system_matrices=system_matrices,
         measurement_matrices=measurement_matrices,
         observations=observations,

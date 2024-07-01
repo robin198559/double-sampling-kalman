@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 
+from double_sampling_kalman.double_kalman.api import double_kalman_filter_numpy_runner
 from double_sampling_kalman.single_kalman.api import discrete_kalman_filter_numpy_runner
 from tests.test_utility import get_simple_test_case
 
@@ -61,7 +62,7 @@ class TestSingleKalman(unittest.TestCase):
         initial_x0 = np.array([0.3, 0.7]).reshape((2, 1))
         initial_p0 = np.array([[0.01, 0.01], [0.01, 0.01]])
 
-        result = discrete_kalman_filter_numpy_runner(
+        double_kalman = double_kalman_filter_numpy_runner(
             system_matrices=system_matrices,
             measurement_matrices=measurement_matrices,
             observations=observations,
@@ -70,5 +71,9 @@ class TestSingleKalman(unittest.TestCase):
             initial_x0=initial_x0,
             initial_p0=initial_p0,
         )
-
-        assert np.sum(result.x[:, 0, 0] - expected) < 1e-8
+        assert np.sum(double_kalman.forward.x[:, 0, 0] - expected) < 1e-8
+        assert np.sum(
+            np.power(double_kalman.backward.x[:, 0, 0] - solution[:, 0, 0], 2)
+        ) < np.sum(np.power(double_kalman.forward.x[:, 0, 0] - solution[:, 0, 0], 2))
+        print(double_kalman.model_error_cov)
+        print()
