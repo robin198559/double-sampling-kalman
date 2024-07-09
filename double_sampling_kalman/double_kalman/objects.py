@@ -2,13 +2,12 @@ from attr.validators import instance_of
 from attrs import define, field
 import numpy as np
 
-from double_sampling_kalman.single_kalman.objects import SingleKalmanOutput
-
 
 @define
 class DoubleKalmanOutput:
-    forward: SingleKalmanOutput = field(validator=instance_of(SingleKalmanOutput))
-    backward: SingleKalmanOutput = field(validator=instance_of(SingleKalmanOutput))
+    forward: np.ndarray = field(validator=instance_of(np.ndarray))
+    backward: np.ndarray = field(validator=instance_of(np.ndarray))
+    error_matrix: np.ndarray = field(validator=instance_of(np.ndarray))
 
     @property
     def last_estimate(self) -> np.ndarray:
@@ -16,12 +15,12 @@ class DoubleKalmanOutput:
 
     @property
     def x(self) -> np.ndarray:
-        x_combined = (self.backward.x[::-1, :, :] + self.forward.x) / 2
+        x_combined = (self.backward[::-1, :, :] + self.forward) / 2
         return x_combined
 
     @property
     def model_error_cov(self) -> np.ndarray:
-        model_error = (self.backward.x[::-1, :, :] - self.forward.x) / 2
+        model_error = (self.backward[::-1, :, :] - self.forward) / 2
         model_error = model_error.reshape(model_error.shape[:2])
         return np.cov(model_error, rowvar=False)
 

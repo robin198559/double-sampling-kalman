@@ -1,8 +1,7 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 
-from double_sampling_kalman.single_kalman.objects import SingleKalmanOutput
 from double_sampling_kalman.utility.info import log_function
 
 
@@ -16,7 +15,7 @@ def _discrete_kalman_filter_core(
     initial_x0: np.ndarray,
     initial_p0: np.ndarray,
     control_vectors: Optional[np.ndarray] = None,
-) -> SingleKalmanOutput:
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     core function of kalman filter. It has to be for loop because it is iterative. No way to optimize
 
@@ -71,7 +70,4 @@ def _discrete_kalman_filter_core(
     # Output
     output = np.array(x_solution)
     assert output.shape == (number_of_observations, number_of_system_components, 1)
-    return SingleKalmanOutput(
-        estimation=output,
-        latest_error_matrix=pt,
-    )
+    return output, pt
