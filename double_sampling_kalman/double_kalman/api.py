@@ -1,16 +1,16 @@
 from typing import Optional
 
 import numpy as np
-import ray
 
-from double_sampling_kalman.double_kalman.methods import _double_kalman_filter_core
+from double_sampling_kalman.double_kalman.methods import (
+    _double_kalman_filter_core,
+)
 from double_sampling_kalman.double_kalman.objects import DoubleKalmanOutput
 from double_sampling_kalman.single_kalman.validation import validate_input_dimension
 from double_sampling_kalman.utility.info import log_function
 
 
 @log_function
-@ray.remote
 def double_kalman_filter_numpy_runner(
     observations: np.ndarray,
     system_matrices: np.ndarray,
@@ -34,6 +34,8 @@ def double_kalman_filter_numpy_runner(
     :param observation_error_covariance:
     :param initial_x0:
     :param initial_p0:
+    :param initial_xt:
+    :param initial_pt:
     :param control_vectors:
     :param validate_input:
     :return: SingleKalmanOutput.solution: size N x M
@@ -51,7 +53,7 @@ def double_kalman_filter_numpy_runner(
             control_vectors=control_vectors,
         )
 
-    forward, backward, error_matrix = _double_kalman_filter_core(
+    forward, backward, _ = _double_kalman_filter_core(
         system_matrices=system_matrices,
         measurement_matrices=measurement_matrices,
         observations=observations,
@@ -62,6 +64,4 @@ def double_kalman_filter_numpy_runner(
         control_vectors=control_vectors,
     )
 
-    return DoubleKalmanOutput(
-        forward=forward, backward=backward, error_matrix=error_matrix
-    )
+    return DoubleKalmanOutput(forward=forward, backward=backward)

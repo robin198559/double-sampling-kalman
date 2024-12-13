@@ -2,4 +2,4 @@ numpy
 pandas
 pandera
 attrs
-ray[default]
+parfun

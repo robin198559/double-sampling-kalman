@@ -33,26 +33,26 @@ def _discrete_kalman_filter_core(
     number_of_system_components = initial_x0.shape[0]
 
     if control_vectors is None:
-        control_vectors = np.zeros(
-            number_of_system_components * number_of_observations
-        ).reshape(number_of_observations, number_of_system_components, 1)
+        control_vectors = initialize_control_vectors(
+            number_of_observations, number_of_system_components
+        )
 
     # initialize variables
     x_solution = []
-    xt_next, pt_next, pt = initial_x0, initial_p0, initial_p0
+    xt, pt = initial_x0, initial_p0
     identity = np.identity(number_of_system_components)
 
     for t in range(number_of_observations):  # main kalman loop
         measurement_matrix = measurement_matrices[t]
         system_matrix = system_matrices[t]
         # predict
-        xt_hat_ = np.matmul(system_matrix, xt_next) + control_vectors[t]
-        pt = (
-            np.matmul(system_matrix, np.matmul(pt_next, system_matrix))
+        xt_hat_ = np.matmul(system_matrix, xt) + control_vectors[t]
+        pt_hat = (
+            np.matmul(system_matrix, np.matmul(pt, system_matrix))
             + model_error_covariance_matrix
         )
         # correct
-        pt_ht = np.matmul(pt, measurement_matrix.T)
+        pt_ht = np.matmul(pt_hat, measurement_matrix.T)
 
         kalman_gain_t = pt_ht / (
             np.matmul(measurement_matrix, pt_ht) + observation_error_covariance
@@ -61,13 +61,28 @@ def _discrete_kalman_filter_core(
             kalman_gain_t, (observations[t] - np.matmul(measurement_matrix, xt_hat_))
         )
         xt_hat = xt_hat_ + estimated_error
-        pt = np.matmul((identity - np.outer(kalman_gain_t, measurement_matrix)), pt)
+        pt_hat = np.matmul(
+            (identity - np.outer(kalman_gain_t, measurement_matrix)), pt_hat
+        )
         # save the data
         x_solution.append(xt_hat)
         # for next iteration
-        xt_next = np.array(xt_hat)
-        pt_next = np.array(pt)
+        xt = np.array(xt_hat)
+        pt = np.array(pt_hat)
     # Output
     output = np.array(x_solution)
     assert output.shape == (number_of_observations, number_of_system_components, 1)
     return output, pt
+
+
+def initialize_control_vectors(
+    number_of_observations: int, number_of_system_components: int
+) -> np.ndarray:
+    assert isinstance(number_of_observations, int) and number_of_observations > 0
+    assert (
+        isinstance(number_of_system_components, int) and number_of_system_components > 0
+    )
+    control_vectors = np.zeros(
+        number_of_system_components * number_of_observations
+    ).reshape(number_of_observations, number_of_system_components, 1)
+    return control_vectors

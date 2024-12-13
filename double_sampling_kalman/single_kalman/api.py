@@ -1,7 +1,6 @@
 from typing import Optional
 
 import numpy as np
-import ray
 
 from double_sampling_kalman.single_kalman.methods import _discrete_kalman_filter_core
 from double_sampling_kalman.single_kalman.objects import SingleKalmanOutput
@@ -10,7 +9,6 @@ from double_sampling_kalman.utility.info import log_function
 
 
 @log_function
-@ray.remote
 def discrete_kalman_filter_numpy_runner(
     observations: np.ndarray,
     system_matrices: np.ndarray,
