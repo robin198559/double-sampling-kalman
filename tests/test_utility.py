@@ -19,6 +19,29 @@ def get_simple_test_case(
     return observations, measurement_matrices, solution
 
 
+def get_simple_test_case_with_constraint(
+    n_obs: int, n_components: int, return_std: float, error_std: float
+):
+    measurement_matrices = return_std * (
+        np.random.rand(n_obs * n_components).reshape(n_obs, 1, n_components) * 2 - 1
+    )
+    solution = np.zeros((n_obs, n_components, 1))
+    solution[: int(n_obs / 2), 0, 0] = 0.45
+    solution[int(n_obs / 2) :, 0, 0] = 0.5
+    solution[:, 1, 0] = 1 - solution[:, 0, 0]
+
+    observations = np.matmul(measurement_matrices, solution).reshape(
+        n_obs
+    ) + error_std * (np.random.rand(n_obs) * 2 - 1)
+    observations = observations.reshape((n_obs, 1))
+    # add constraint
+    measurement_matrices = np.concatenate(
+        (measurement_matrices, np.ones(measurement_matrices.shape)), axis=1
+    )
+    observations = np.concatenate((observations, np.ones(observations.shape)), axis=1)
+    return observations, measurement_matrices, solution
+
+
 def get_complex_test_case(
     n_obs: int, n_components: int, return_std: float, error_std: float
 ):

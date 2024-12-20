@@ -10,9 +10,9 @@ class DoubleKalmanOutput:
 
     @property
     def last_estimate(self) -> np.ndarray:
-        return self.x[-1, :, :]
+        return self.x[-1, :, 0]
 
     @property
     def x(self) -> np.ndarray:
         x_combined = (self.backward + self.forward) / 2
-        return x_combined
+        return x_combined[:, :, 0]

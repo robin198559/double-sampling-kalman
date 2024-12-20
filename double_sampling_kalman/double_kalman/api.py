@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 
 from double_sampling_kalman.double_kalman.methods import (
-    _double_kalman_filter_core,
+    double_kalman_filter_core_forward_first,
 )
 from double_sampling_kalman.double_kalman.objects import DoubleKalmanOutput
 from double_sampling_kalman.single_kalman.validation import validate_input_dimension
@@ -34,8 +34,6 @@ def double_kalman_filter_numpy_runner(
     :param observation_error_covariance:
     :param initial_x0:
     :param initial_p0:
-    :param initial_xt:
-    :param initial_pt:
     :param control_vectors:
     :param validate_input:
     :return: SingleKalmanOutput.solution: size N x M
@@ -53,7 +51,7 @@ def double_kalman_filter_numpy_runner(
             control_vectors=control_vectors,
         )
 
-    forward, backward, _ = _double_kalman_filter_core(
+    forward, backward, _ = double_kalman_filter_core_forward_first(
         system_matrices=system_matrices,
         measurement_matrices=measurement_matrices,
         observations=observations,

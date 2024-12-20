@@ -48,21 +48,26 @@ def _discrete_kalman_filter_core(
         # predict
         xt_hat_ = np.matmul(system_matrix, xt) + control_vectors[t]
         pt_hat = (
-            np.matmul(system_matrix, np.matmul(pt, system_matrix))
+            np.matmul(system_matrix, np.matmul(pt, system_matrix.T))
             + model_error_covariance_matrix
         )
         # correct
         pt_ht = np.matmul(pt_hat, measurement_matrix.T)
 
-        kalman_gain_t = pt_ht / (
-            np.matmul(measurement_matrix, pt_ht) + observation_error_covariance
+        kalman_gain_t = np.matmul(
+            pt_ht,
+            np.linalg.inv(
+                np.matmul(measurement_matrix, pt_ht) + observation_error_covariance
+            ),
         )
         estimated_error = np.matmul(
-            kalman_gain_t, (observations[t] - np.matmul(measurement_matrix, xt_hat_))
+            kalman_gain_t,
+            (observations[t : t + 1].T - np.matmul(measurement_matrix, xt_hat_)),
         )
         xt_hat = xt_hat_ + estimated_error
+
         pt_hat = np.matmul(
-            (identity - np.outer(kalman_gain_t, measurement_matrix)), pt_hat
+            (identity - np.matmul(kalman_gain_t, measurement_matrix)), pt_hat
         )
         # save the data
         x_solution.append(xt_hat)
@@ -71,7 +76,11 @@ def _discrete_kalman_filter_core(
         pt = np.array(pt_hat)
     # Output
     output = np.array(x_solution)
-    assert output.shape == (number_of_observations, number_of_system_components, 1)
+    assert output.shape == (
+        number_of_observations,
+        number_of_system_components,
+        1,
+    ), f"wrong output shape: {output.shape}. Should be ({number_of_observations}, {number_of_system_components}, 1)"
     return output, pt
 
 
