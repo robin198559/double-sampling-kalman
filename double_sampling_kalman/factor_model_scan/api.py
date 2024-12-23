@@ -5,12 +5,12 @@ import numpy as np
 import pandas as pd
 from pandera.typing import DataFrame
 
-from double_sampling_kalman.single_observer_scan.methods import (
+from double_sampling_kalman.factor_model_scan.methods import (
     _double_kalman_filter_numpy_scan,
 )
 from double_sampling_kalman.double_kalman.objects import DoubleKalmanOutput
 
-from double_sampling_kalman.single_observer_scan.schema import ObservationSchema
+from double_sampling_kalman.factor_model_scan.schema import ObservationSchema
 from double_sampling_kalman.utility.info import log_function
 
 
@@ -55,6 +55,7 @@ def _double_sampling_kalman_filter_scan(
 @log_function
 def double_kalman_filter_numpy_scan(
     max_iter: int,
+    log10std_tol: float,
     observations: np.ndarray,
     system_matrices: np.ndarray,
     measurement_matrices: np.ndarray,
@@ -70,6 +71,7 @@ def double_kalman_filter_numpy_scan(
     Assuming (N, I) observations, (M, 1) system components
 
     :param max_iter:
+    :param log10std_tol:
     :param observations:
     :param system_matrices:
     :param measurement_matrices:
@@ -83,6 +85,7 @@ def double_kalman_filter_numpy_scan(
 
     forward, backward = _double_kalman_filter_numpy_scan(
         max_iter=max_iter,
+        log10std_tol=log10std_tol,
         observations=observations,
         system_matrices=system_matrices,
         measurement_matrices=measurement_matrices,

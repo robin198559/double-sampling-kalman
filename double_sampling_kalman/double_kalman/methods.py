@@ -198,8 +198,6 @@ def get_double_kalman_filter_signal_in_parallel(
             calculate_filter_signal(
                 forward=forward,
                 backward=backward,
-                system_matrices=system_matrices,
-                control_vectors=control_vectors,
             )
         )
     return signal_list
@@ -208,16 +206,9 @@ def get_double_kalman_filter_signal_in_parallel(
 def calculate_filter_signal(
     forward: np.ndarray,
     backward: np.ndarray,
-    system_matrices: np.ndarray,
-    control_vectors: Optional[np.ndarray] = None,
 ) -> float:
-    if control_vectors is None:
-        control_vectors = initialize_control_vectors(forward.shape[0], forward.shape[1])
-
-    filter_ave = backward + forward / 2
-    filter_displacement = np.sum(np.pow((forward - backward)[:, :, 0], 2), axis=0)
-    x_hat = np.matmul(system_matrices, filter_ave) + control_vectors
-    model_displacement = np.std(filter_ave[1:, :, 0] - x_hat[:-1, :, 0], axis=0)
+    filter_displacement = np.mean((forward - backward)[:, :, 0], axis=0)
+    model_displacement = np.std((forward - backward)[:, :, 0], axis=0)
 
     np.seterr(invalid="raise")
     try:

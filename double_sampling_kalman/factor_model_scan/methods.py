@@ -7,7 +7,6 @@ from double_sampling_kalman.double_kalman.methods import (
     get_double_kalman_filter_signal_in_parallel,
     calculate_model_error_cov,
     calculate_observation_error_cov,
-    _double_kalman_filter_core,
     double_kalman_filter_core_open_ends,
 )
 from double_sampling_kalman.utility.info import log_function
@@ -20,10 +19,10 @@ def moving_std(a, window_size=3) -> np.array:
     )
 
 
-def stop_filter_scan(error_cov_list: List[float], min_iter: int, tol: float):
+def stop_filter_scan(error_cov_list: List[float], min_iter: int, log10std_tol: float):
     if len(error_cov_list) > min_iter:
-        signal_log = np.log(error_cov_list)
-        within_range = moving_std(signal_log, window_size=min_iter) < tol
+        signal_log = np.log10(error_cov_list)
+        within_range = moving_std(signal_log, window_size=min_iter) < log10std_tol
     else:
         within_range = np.array([0])
     if np.sum(within_range[-min_iter:]) >= min_iter:
@@ -47,6 +46,7 @@ def construct_multiplier_list(
 @log_function
 def _double_kalman_filter_numpy_scan(
     max_iter: int,
+    log10std_tol: float,
     observations: np.ndarray,
     system_matrices: np.ndarray,
     measurement_matrices: np.ndarray,
@@ -72,11 +72,11 @@ def _double_kalman_filter_numpy_scan(
     :param control_vectors:
     :return: SingleKalmanOutput.solution: size N x M
     """
-    min_iter = 5
-    tol = 0.02
+    MIN_ITER = 5
+    assert log10std_tol > 0
     assert (
-        max_iter > min_iter
-    ), f"max iteration must be bigger than {min_iter}. Got {max_iter}"
+        max_iter > MIN_ITER
+    ), f"max iteration must be bigger than {MIN_ITER}. Got {max_iter}"
     error_cov_list = []
     multiplier_granularity = 40
     filter_multipliers = construct_multiplier_list(
@@ -84,7 +84,7 @@ def _double_kalman_filter_numpy_scan(
         multiplier_log_width=30,
     )
 
-    for i in range(max_iter):
+    for number_of_iterations in range(max_iter):
         # find best multiplier
         signal = get_double_kalman_filter_signal_in_parallel(
             filter_multipliers=filter_multipliers,
@@ -98,7 +98,7 @@ def _double_kalman_filter_numpy_scan(
             control_vectors=control_vectors,
         )
 
-        optimal_multiplier = filter_multipliers[np.argmax(np.diff(signal)) + 1]
+        optimal_multiplier = filter_multipliers[np.argmax(np.diff(np.diff(signal))) + 1]
 
         # calculate filter using best multiplier
         forward, backward, initial_p0 = double_kalman_filter_core_open_ends(
@@ -135,11 +135,17 @@ def _double_kalman_filter_numpy_scan(
         error_cov_list.append(
             float((observation_error_covariance * optimal_multiplier)[0, 0])
         )
-        if stop_filter_scan(error_cov_list=error_cov_list, min_iter=min_iter, tol=tol):
-            logging.info("successively obtained the filter approximation")
+        if stop_filter_scan(
+            error_cov_list=error_cov_list, min_iter=MIN_ITER, log10std_tol=log10std_tol
+        ):
+            logging.info(
+                f"successively obtained the filter approximation using {number_of_iterations=}"
+            )
             return forward, backward
 
-    raise ValueError(f"failed to obtain converging filter results after {max_iter=}")
+    raise ValueError(
+        f"failed to obtain converging filter results after {max_iter=} with {log10std_tol=}"
+    )
 
 
 def zoom_in_signal_multipliers(
@@ -163,7 +169,7 @@ def zoom_in_signal_multipliers(
         abs(np.log(left_wing)),
         abs(np.log(right_wing)),
     )
-    multiplier_log_width = multiplier_log_width + 2
+    multiplier_log_width = multiplier_log_width + 1
     current_multipliers = construct_multiplier_list(
         multiplier_granularity=multiplier_granularity,
         multiplier_log_width=multiplier_log_width,

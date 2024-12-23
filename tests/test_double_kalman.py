@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from double_sampling_kalman.single_observer_scan.api import (
+from double_sampling_kalman.factor_model_scan.api import (
     double_kalman_filter_numpy_scan,
 )
 from tests.test_utility import get_simple_test_case
@@ -14,40 +14,6 @@ class TestSingleKalman(unittest.TestCase):
         n_comp = 2
         std = 0.1
         error_std = 0.001
-        expected = np.array(
-            [
-                0.2965542,
-                0.29977733,
-                0.31230881,
-                0.32148675,
-                0.41269284,
-                0.42282208,
-                0.41978839,
-                0.42649139,
-                0.44420546,
-                0.44135612,
-                0.44599717,
-                0.44724558,
-                0.4464233,
-                0.44815663,
-                0.44807461,
-                0.47044644,
-                0.4711174,
-                0.49909483,
-                0.49611237,
-                0.49171277,
-                0.49230087,
-                0.49696695,
-                0.4944412,
-                0.49429621,
-                0.49471085,
-                0.49421624,
-                0.49825375,
-                0.50093443,
-                0.50148784,
-                0.50077752,
-            ]
-        )
 
         observations, measurement_matrices, solution = get_simple_test_case(
             n_obs=n_obs,
@@ -64,6 +30,7 @@ class TestSingleKalman(unittest.TestCase):
 
         result = double_kalman_filter_numpy_scan(
             max_iter=50,
+            log10std_tol=0.1,
             system_matrices=system_matrices,
             measurement_matrices=measurement_matrices,
             observations=observations,
