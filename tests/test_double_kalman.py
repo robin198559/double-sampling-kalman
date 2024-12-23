@@ -62,7 +62,7 @@ class TestSingleKalman(unittest.TestCase):
         initial_x0 = np.array([0.3, 0.7]).reshape((2, 1))
         initial_p0 = np.array([[0.01, 0.01], [0.01, 0.01]])
 
-        double_kalman = double_kalman_filter_numpy_scan(
+        result = double_kalman_filter_numpy_scan(
             max_iter=50,
             system_matrices=system_matrices,
             measurement_matrices=measurement_matrices,
@@ -72,3 +72,4 @@ class TestSingleKalman(unittest.TestCase):
             initial_x0=initial_x0,
             initial_p0=initial_p0,
         )
+        breakpoint()
