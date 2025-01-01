@@ -14,7 +14,7 @@ def _discrete_kalman_filter_core(
     observation_error_covariance: np.ndarray,
     initial_x0: np.ndarray,
     initial_p0: np.ndarray,
-    control_vectors: Optional[np.ndarray] = None,
+    control_vectors: np.ndarray,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     core function of kalman filter. It has to be for loop because it is iterative. No way to optimize
@@ -32,16 +32,10 @@ def _discrete_kalman_filter_core(
     number_of_observations = observations.shape[0]
     number_of_system_components = initial_x0.shape[0]
 
-    if control_vectors is None:
-        control_vectors = initialize_control_vectors(
-            number_of_observations, number_of_system_components
-        )
-
     # initialize variables
     x_solution = []
     xt, pt = initial_x0, initial_p0
     identity = np.identity(number_of_system_components)
-
     for t in range(number_of_observations):  # main kalman loop
         measurement_matrix = measurement_matrices[t]
         system_matrix = system_matrices[t]

@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Union
 
 import numpy as np
 
@@ -9,6 +9,7 @@ from double_sampling_kalman.double_kalman.methods import (
     calculate_observation_error_cov,
     double_kalman_filter_core_open_ends,
 )
+from double_sampling_kalman.single_kalman.objects import KalmanFilterInput
 from double_sampling_kalman.utility.info import log_function
 
 
@@ -19,14 +20,23 @@ def moving_std(a, window_size=3) -> np.array:
     )
 
 
-def stop_filter_scan(error_cov_list: List[float], min_iter: int, log10std_tol: float):
-    if len(error_cov_list) > min_iter:
+def calculate_filter_convergence(
+    error_cov_list: List[float], window_size: int
+) -> List[float]:
+    if len(error_cov_list) > window_size:
         signal_log = np.log10(error_cov_list)
-        within_range = moving_std(signal_log, window_size=min_iter) < log10std_tol
+        return moving_std(signal_log, window_size=window_size).tolist()
     else:
-        within_range = np.array([0])
-    if np.sum(within_range[-min_iter:]) >= min_iter:
-        return True
+        return []
+
+
+def stop_filter_scan(
+    convergence_series: List[float], window_size: int, convergence_tol: float
+):
+    if len(convergence_series) > 0:
+        within_range = (np.array(convergence_series) < convergence_tol).tolist()
+        if np.sum(within_range[-window_size:]) >= window_size:
+            return True
     return False
 
 
@@ -44,9 +54,12 @@ def construct_multiplier_list(
 
 
 @log_function
-def _double_kalman_filter_numpy_scan(
+def _double_kalman_filter_find_parameters(
     max_iter: int,
-    log10std_tol: float,
+    window_size_iter: int,
+    convergence_tol: float,
+    filter_tuning_multiplier_granularity: int,
+    initial_filter_tuning_multiplier_log_width: float,
     observations: np.ndarray,
     system_matrices: np.ndarray,
     measurement_matrices: np.ndarray,
@@ -54,14 +67,15 @@ def _double_kalman_filter_numpy_scan(
     observation_error_covariance: np.ndarray,
     initial_x0: np.ndarray,
     initial_p0: np.ndarray,
-    control_vectors: Optional[np.ndarray] = None,
-) -> Tuple[np.ndarray, np.ndarray]:
+    control_vectors: np.ndarray,
+) -> Dict[str, Union[str, np.ndarray]]:
     """
     Calculate iteration runs of double sampling kalman filter.
     Returns N x M output
     Assuming (N, I) observations, (M, 1) system components
 
     :param max_iter:
+    :param window_size_iter:
     :param observations:
     :param system_matrices:
     :param measurement_matrices:
@@ -72,16 +86,14 @@ def _double_kalman_filter_numpy_scan(
     :param control_vectors:
     :return: SingleKalmanOutput.solution: size N x M
     """
-    MIN_ITER = 5
-    assert log10std_tol > 0
     assert (
-        max_iter > MIN_ITER
-    ), f"max iteration must be bigger than {MIN_ITER}. Got {max_iter}"
+        max_iter > window_size_iter
+    ), f"max iteration must be bigger than {window_size_iter}. Got {max_iter}"
     error_cov_list = []
-    multiplier_granularity = 40
+    convergence_series = []
     filter_multipliers = construct_multiplier_list(
-        multiplier_granularity=multiplier_granularity,
-        multiplier_log_width=30,
+        multiplier_granularity=filter_tuning_multiplier_granularity,
+        multiplier_log_width=initial_filter_tuning_multiplier_log_width,
     )
 
     for number_of_iterations in range(max_iter):
@@ -128,30 +140,46 @@ def _double_kalman_filter_numpy_scan(
         filter_multipliers = zoom_in_signal_multipliers(
             current_multipliers=filter_multipliers,
             current_signal=signal,
-            multiplier_granularity=multiplier_granularity,
+            filter_tuning_multiplier_granularity=filter_tuning_multiplier_granularity,
         )
         initial_x0 = backward[0, :, 0].reshape(len(backward[0, :, 0]), 1)
         # determine if the best result has been achieved
         error_cov_list.append(
             float((observation_error_covariance * optimal_multiplier)[0, 0])
         )
+        convergence_series = calculate_filter_convergence(
+            error_cov_list=error_cov_list,
+            window_size=window_size_iter,
+        )
         if stop_filter_scan(
-            error_cov_list=error_cov_list, min_iter=MIN_ITER, log10std_tol=log10std_tol
+            convergence_series=convergence_series,
+            window_size=window_size_iter,
+            convergence_tol=convergence_tol,
         ):
             logging.info(
                 f"successively obtained the filter approximation using {number_of_iterations=}"
             )
-            return forward, backward
+            return {
+                "observations": observations,
+                "system_matrices": system_matrices,
+                "measurement_matrices": measurement_matrices,
+                "model_error_covariance_matrix": model_error_covariance_matrix,
+                "observation_error_covariance": observation_error_covariance,
+                "initial_x0": initial_x0,
+                "initial_p0": initial_p0,
+                "control_vectors": control_vectors,
+            }
 
     raise ValueError(
-        f"failed to obtain converging filter results after {max_iter=} with {log10std_tol=}"
+        f"{convergence_series=}. Failed to obtain converging filter results after {max_iter=} "
+        f"with {convergence_tol=}. You may try to increase the ScanConfig.max_iter or ScanConfig.convergence_tol"
     )
 
 
 def zoom_in_signal_multipliers(
     current_multipliers: List[float],
     current_signal: List[float],
-    multiplier_granularity: int,
+    filter_tuning_multiplier_granularity: int,
 ) -> List[float]:
     convex = np.diff(np.diff(current_signal))
     negative_convex_index_list = [
@@ -171,7 +199,7 @@ def zoom_in_signal_multipliers(
     )
     multiplier_log_width = multiplier_log_width + 1
     current_multipliers = construct_multiplier_list(
-        multiplier_granularity=multiplier_granularity,
+        multiplier_granularity=filter_tuning_multiplier_granularity,
         multiplier_log_width=multiplier_log_width,
     )
     return current_multipliers

@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, List
+from typing import Tuple, List
 
 import numpy as np
 from parfun import parfun
@@ -22,7 +22,7 @@ def _double_kalman_filter_core(
     observation_error_covariance: np.ndarray,
     initial_x0: np.ndarray,
     initial_p0: np.ndarray,
-    control_vectors: Optional[np.ndarray] = None,
+    control_vectors: np.ndarray,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
     # construct reverse inputs
@@ -36,15 +36,11 @@ def _double_kalman_filter_core(
     measurement_matrices_concat = np.concatenate(
         (measurement_matrices, measurement_matrices_reversed), axis=0
     )
-    if control_vectors:
-        control_vectors_reversed = (
-            control_vectors[::-1, :, :][1:, :, :] if control_vectors else None
-        )
-        control_vectors_concat = np.concatenate(
-            (control_vectors, control_vectors_reversed), axis=0
-        )
-    else:
-        control_vectors_concat = None
+
+    control_vectors_reversed = control_vectors[::-1, :, :][1:, :, :]
+    control_vectors_concat = np.concatenate(
+        (control_vectors, control_vectors_reversed), axis=0
+    )
 
     # run forward filter
     kalman_output, error_matrix = _discrete_kalman_filter_core(
@@ -73,20 +69,14 @@ def double_kalman_filter_core_open_ends(
     observation_error_covariance: np.ndarray,
     initial_x0: np.ndarray,
     initial_p0: np.ndarray,
-    control_vectors: Optional[np.ndarray] = None,
+    control_vectors: np.ndarray,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
     # construct reverse inputs
     observations_reversed = observations[::-1, :]
     system_matrices_reversed = system_matrices[::-1, :, :]
     measurement_matrices_reversed = measurement_matrices[::-1, :, :]
-
-    if control_vectors:
-        control_vectors_reversed = (
-            control_vectors[::-1, :, :][:-1, :, :] if control_vectors else None
-        )
-    else:
-        control_vectors_reversed = None
+    control_vectors_reversed = control_vectors[::-1, :, :]
 
     # run forward filter
     forward_kalman, initial_p0 = _discrete_kalman_filter_core(
@@ -124,7 +114,7 @@ def double_kalman_filter_core_w_constraint_factor_model(
     observation_error_covariance: np.ndarray,
     initial_x0: np.ndarray,
     initial_p0: np.ndarray,
-    control_vectors: Optional[np.ndarray] = None,
+    control_vectors: np.ndarray,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     # calculate filter using best multiplier and add constraint
     measurement_matrices_w_constraint = np.concatenate(
@@ -180,7 +170,7 @@ def get_double_kalman_filter_signal_in_parallel(
     observation_error_covariance: np.ndarray,
     initial_x0: np.ndarray,
     initial_p0: np.ndarray,
-    control_vectors: Optional[np.ndarray] = None,
+    control_vectors: np.ndarray,
 ) -> List[float]:
     signal_list = []
     for k in filter_multipliers:
@@ -190,6 +180,44 @@ def get_double_kalman_filter_signal_in_parallel(
             observations=observations,
             model_error_covariance_matrix=model_error_covariance_matrix / k,
             observation_error_covariance=observation_error_covariance * k,
+            initial_x0=initial_x0,
+            initial_p0=initial_p0,
+            control_vectors=control_vectors,
+        )
+        signal_list.append(
+            calculate_filter_signal(
+                forward=forward,
+                backward=backward,
+            )
+        )
+    return signal_list
+
+
+@log_function
+@parfun(
+    split=per_argument(filter_multipliers=list_by_chunk),
+    combine_with=list_concat,
+)
+def find_double_kalman_filter_control_signal_in_parallel(
+    control_location_and_magnitude: List[Tuple[int, float]],
+    observations: np.ndarray,
+    system_matrices: np.ndarray,
+    measurement_matrices: np.ndarray,
+    model_error_covariance_matrix: np.ndarray,
+    observation_error_covariance: np.ndarray,
+    initial_x0: np.ndarray,
+    initial_p0: np.ndarray,
+    control_vectors: np.ndarray,
+) -> List[float]:
+    signal_list = []
+    for k, c in control_location_and_magnitude:
+        control_vectors = control_vectors
+        forward, backward, error_matrix = _double_kalman_filter_core(
+            system_matrices=system_matrices,
+            measurement_matrices=measurement_matrices,
+            observations=observations,
+            model_error_covariance_matrix=model_error_covariance_matrix,
+            observation_error_covariance=observation_error_covariance,
             initial_x0=initial_x0,
             initial_p0=initial_p0,
             control_vectors=control_vectors,
@@ -235,11 +263,8 @@ def calculate_observation_error_cov(
 def calculate_model_error_cov(
     forward: np.ndarray,
     system_matrices: np.ndarray,
-    control_vectors: Optional[np.ndarray] = None,
+    control_vectors: np.ndarray,
 ) -> np.ndarray:
-    if control_vectors is None:
-        control_vectors = initialize_control_vectors(forward.shape[0], forward.shape[1])
-
     filter_ave = forward
     x_hat = np.matmul(system_matrices, filter_ave) + control_vectors
     return np.cov((filter_ave[1:, :, 0] - x_hat[:-1, :, 0]).T)

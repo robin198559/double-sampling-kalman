@@ -1,5 +1,3 @@
-from typing import Optional
-
 import numpy as np
 
 from double_sampling_kalman.utility.info import log_function
@@ -14,7 +12,7 @@ def validate_input_dimension(
     observation_error_covariance: np.ndarray,
     initial_x0: np.ndarray,
     initial_p0: np.ndarray,
-    control_vectors: Optional[np.ndarray] = None,
+    control_vectors: np.ndarray,
 ):
     """
 
@@ -56,13 +54,26 @@ def validate_input_dimension(
     m = initial_x0.shape[0]
 
     # validating other dimensions
-    assert system_matrices.shape == (n, m, m), f"{system_matrices.shape=} should be ({n}, {m}, {m})"
-    assert measurement_matrices.shape == (n, i, m), f"{measurement_matrices.shape=} should be ({n}, {i}, {m})"
-    assert model_error_covariance_matrix.shape == (m, m), f"{model_error_covariance_matrix.shape=} should be ({n}, {m}, {m})"
+    assert system_matrices.shape == (
+        n,
+        m,
+        m,
+    ), f"{system_matrices.shape=} should be ({n}, {m}, {m})"
+    assert measurement_matrices.shape == (
+        n,
+        i,
+        m,
+    ), f"{measurement_matrices.shape=} should be ({n}, {i}, {m})"
+    assert model_error_covariance_matrix.shape == (
+        m,
+        m,
+    ), f"{model_error_covariance_matrix.shape=} should be ({n}, {m}, {m})"
     assert initial_p0.shape == (m, m), f"{initial_p0.shape=} should be ({m}, {m})"
     assert initial_x0.shape == (m, 1), f"{initial_x0.shape=} should be ({m}, 1)"
-    assert observation_error_covariance.shape == (i, i), f"{observation_error_covariance.shape=} should be ({i}, {i})"
+    assert observation_error_covariance.shape == (
+        i,
+        i,
+    ), f"{observation_error_covariance.shape=} should be ({i}, {i})"
 
-    if control_vectors is not None:
-        assert isinstance(control_vectors, np.ndarray)
-        assert control_vectors.shape == (n, m, 1)
+    assert isinstance(control_vectors, np.ndarray)
+    assert control_vectors.shape == (n, m, 1)
