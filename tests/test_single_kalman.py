@@ -4,7 +4,7 @@ import numpy as np
 
 from double_sampling_kalman.single_kalman.api import discrete_kalman_filter_numpy_runner
 from double_sampling_kalman.single_kalman.methods import (
-    _discrete_kalman_filter_core,
+    discrete_kalman_filter_core,
     initialize_control_vectors,
 )
 from tests.test_utility import get_simple_test_case_numpy, get_simple_solution_numpy
@@ -67,7 +67,7 @@ class TestSingleKalman(unittest.TestCase):
         initial_x0 = np.array([0.3, 0.7]).reshape((2, 1))
         initial_p0 = np.array([[0.01, 0.01], [0.01, 0.01]])
 
-        result, _ = _discrete_kalman_filter_core(
+        result, _ = discrete_kalman_filter_core(
             system_matrices=system_matrices,
             measurement_matrices=measurement_matrices,
             observations=observations,

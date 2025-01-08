@@ -2,13 +2,13 @@ from double_sampling_kalman.double_kalman.methods import (
     double_kalman_filter_core_open_ends,
 )
 from double_sampling_kalman.double_kalman.objects import DoubleKalmanOutput
-from double_sampling_kalman.single_kalman.objects import KalmanFilterInput
+from double_sampling_kalman.single_kalman.objects import DSKFInputCollection
 from double_sampling_kalman.utility.info import log_function
 
 
 @log_function
 def double_kalman_filter(
-    filter_input: KalmanFilterInput,
+    filter_input: DSKFInputCollection,
 ) -> DoubleKalmanOutput:
     """
     Calculate 2 runs of kalman filter - forward and backward.
@@ -26,6 +26,4 @@ def double_kalman_filter(
         control_vectors=filter_input.control_vectors,
     )
 
-    return DoubleKalmanOutput(
-        dependent_names=filter_input.dependent_names, forward=forward, backward=backward
-    )
+    return DoubleKalmanOutput(dependent_names=filter_input.dependent_names, forward=forward, backward=backward)

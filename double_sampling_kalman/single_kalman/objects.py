@@ -1,8 +1,8 @@
+from copy import copy
 from typing import List
 
-import attrs
-from attr.validators import instance_of, deep_iterable
-from attrs import define, field
+from attrs.validators import instance_of, deep_iterable, optional
+from attrs import define, field, asdict
 import numpy as np
 
 from double_sampling_kalman.single_kalman.validation import validate_input_dimension
@@ -22,26 +22,24 @@ class SingleKalmanOutput:
         return self.estimation
 
 
-@attrs.define
-class KalmanFilterInput:
-    response_name: str = attrs.field(validator=instance_of(str))
-    dependent_names: List[str] = attrs.field(
-        validator=deep_iterable(
-            member_validator=instance_of(str), iterable_validator=instance_of(list)
-        )
+@define
+class DSKFInputCollection:
+    response_name: str = field(validator=instance_of(str))
+    dependent_names: List[str] = field(
+        validator=deep_iterable(member_validator=instance_of(str), iterable_validator=instance_of(list))
     )
-    observations: np.ndarray = attrs.field(validator=instance_of(np.ndarray))
-    system_matrices: np.ndarray = attrs.field(validator=instance_of(np.ndarray))
-    measurement_matrices: np.ndarray = attrs.field(validator=instance_of(np.ndarray))
-    model_error_covariance_matrix: np.ndarray = attrs.field(
-        validator=instance_of(np.ndarray)
+    observations: np.ndarray = field(validator=instance_of(np.ndarray))
+    system_matrices: np.ndarray = field(validator=instance_of(np.ndarray))
+    measurement_matrices: np.ndarray = field(validator=instance_of(np.ndarray))
+    model_error_covariance_matrix: np.ndarray = field(validator=instance_of(np.ndarray))
+    observation_error_covariance: np.ndarray = field(validator=instance_of(np.ndarray))
+    initial_x0: np.ndarray = field(validator=instance_of(np.ndarray))
+    initial_p0: np.ndarray = field(validator=instance_of(np.ndarray))
+    control_vectors: np.ndarray = field(validator=instance_of(np.ndarray))
+    update_ratio_log10_list_log: List[float] = field(
+        validator=optional(deep_iterable(member_validator=instance_of(float), iterable_validator=instance_of(list))),
+        default=None,
     )
-    observation_error_covariance: np.ndarray = attrs.field(
-        validator=instance_of(np.ndarray)
-    )
-    initial_x0: np.ndarray = attrs.field(validator=instance_of(np.ndarray))
-    initial_p0: np.ndarray = attrs.field(validator=instance_of(np.ndarray))
-    control_vectors: np.ndarray = attrs.field(validator=instance_of(np.ndarray))
 
     def __attrs_post_init__(self):
         validate_input_dimension(
@@ -56,11 +54,11 @@ class KalmanFilterInput:
         )
 
     @staticmethod
-    def from_dict(data) -> "KalmanFilterInput":
-        return KalmanFilterInput(**data)
+    def from_dict(data) -> "DSKFInputCollection":
+        return DSKFInputCollection(**data)
 
     def to_dict(self):
-        return attrs.asdict(self)
+        return asdict(self)
 
     def duplicate(self):
-        return KalmanFilterInput(**{i: v.copy() for i, v in self.to_dict().items()})
+        return DSKFInputCollection.from_dict({i: copy(v) for i, v in self.to_dict().items()})

@@ -6,7 +6,7 @@ from double_sampling_kalman.utility.info import log_function
 
 
 @log_function
-def _discrete_kalman_filter_core(
+def discrete_kalman_filter_core(
     observations: np.ndarray,
     system_matrices: np.ndarray,
     measurement_matrices: np.ndarray,

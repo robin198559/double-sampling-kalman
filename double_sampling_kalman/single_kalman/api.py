@@ -2,10 +2,10 @@ from typing import Optional
 
 import numpy as np
 
-from double_sampling_kalman.single_kalman.methods import _discrete_kalman_filter_core
+from double_sampling_kalman.single_kalman.methods import discrete_kalman_filter_core
 from double_sampling_kalman.single_kalman.objects import (
     SingleKalmanOutput,
-    KalmanFilterInput,
+    DSKFInputCollection,
 )
 from double_sampling_kalman.single_kalman.validation import validate_input_dimension
 from double_sampling_kalman.utility.info import log_function
@@ -13,7 +13,7 @@ from double_sampling_kalman.utility.info import log_function
 
 @log_function
 def discrete_kalman_filter_numpy_runner(
-    filter_input: KalmanFilterInput,
+    filter_input: DSKFInputCollection,
 ) -> SingleKalmanOutput:
     """
     calculate Kalman filter run
@@ -21,7 +21,7 @@ def discrete_kalman_filter_numpy_runner(
     :param filter_input:
     """
 
-    output, pt = _discrete_kalman_filter_core(
+    output, pt = discrete_kalman_filter_core(
         system_matrices=filter_input.system_matrices,
         measurement_matrices=filter_input.measurement_matrices,
         observations=filter_input.observations,
