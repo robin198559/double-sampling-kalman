@@ -2,11 +2,12 @@ import unittest
 
 import numpy as np
 
+from double_sampling_kalman.single_kalman.api import discrete_kalman_filter_numpy_runner
 from double_sampling_kalman.single_kalman.methods import (
-    discrete_kalman_filter,
+    discrete_kalman_filter_core,
+    initialize_control_vectors,
 )
-from double_sampling_kalman.single_kalman.validation import validate_input_dimension
-from tests.test_utility import get_simple_test_case
+from tests.test_utility import get_simple_test_case_numpy, get_simple_solution_numpy
 
 
 class TestSingleKalman(unittest.TestCase):
@@ -50,10 +51,12 @@ class TestSingleKalman(unittest.TestCase):
                 0.50077752,
             ]
         )
-
-        observations, measurement_matrices, solution = get_simple_test_case(
+        solution = get_simple_solution_numpy(
             n_obs=n_obs,
             n_components=n_comp,
+        )
+        observations, measurement_matrices = get_simple_test_case_numpy(
+            solution=solution,
             return_std=std,
             error_std=error_std,
         )
@@ -64,17 +67,7 @@ class TestSingleKalman(unittest.TestCase):
         initial_x0 = np.array([0.3, 0.7]).reshape((2, 1))
         initial_p0 = np.array([[0.01, 0.01], [0.01, 0.01]])
 
-        validate_input_dimension(
-            observations=observations,
-            system_matrices=system_matrices,
-            measurement_matrices=measurement_matrices,
-            model_error_covariance_matrix=model_error_covariance_matrix,
-            observation_error_covariance=observation_error_covariance_matrix,
-            initial_x0=initial_x0,
-            initial_p0=initial_p0,
-        )
-
-        result = discrete_kalman_filter(
+        result, _ = discrete_kalman_filter_core(
             system_matrices=system_matrices,
             measurement_matrices=measurement_matrices,
             observations=observations,
@@ -82,6 +75,7 @@ class TestSingleKalman(unittest.TestCase):
             observation_error_covariance=observation_error_covariance_matrix,
             initial_x0=initial_x0,
             initial_p0=initial_p0,
+            control_vectors=initialize_control_vectors(n_obs, n_comp),
         )
 
         assert np.sum(result[:, 0, 0] - expected) < 1e-8
