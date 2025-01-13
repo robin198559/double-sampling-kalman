@@ -41,12 +41,8 @@ class TestSingleKalman(unittest.TestCase):
             filter_input=filter_input,
         )
         result = double_kalman_filter(filter_input)
-
+        breakpoint()
         filter_input = tune_filter_control(
-            scan_config=scan_config,
-            filter_input=filter_input,
-        )
-        filter_input = tune_filter(
             scan_config=scan_config,
             filter_input=filter_input,
         )

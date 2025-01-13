@@ -67,8 +67,6 @@ def _double_kalman_filter_find_parameters(
     else:
         update_ratio_log10_list = update_ratio_log10_list_log.copy()
 
-    use_gradient_descent = True
-
     filter_multipliers = construct_multiplier_list(
         multiplier_granularity=filter_tuning_multiplier_granularity,
         multiplier_log10_width=filter_tuning_multiplier_log10_width,
@@ -88,28 +86,25 @@ def _double_kalman_filter_find_parameters(
 
     forward, backward = np.zeros((n_obs, n_comp, 1)), np.zeros((n_obs, n_comp, 1))
     for number_of_iterations in range(max_iter):
-        if use_gradient_descent:
-            try:
-                optimal_multiplier = get_optimal_filter_multiplier_gradient_descent(
-                    max_iter=max_iter,
-                    starting_filter_multiplier_log10=filter_tuning_multiplier_log10_width,
-                    delta_filter_multiplier_log10=1e-3,
-                    learning_rate_log10=1,
-                    stopping_filter_multiplier_log10=-filter_tuning_multiplier_log10_width,
-                    system_matrices=system_matrices,
-                    measurement_matrices=measurement_matrices,
-                    observations=observations,
-                    model_error_covariance_matrix=model_error_covariance_matrix,
-                    observation_error_covariance=observation_error_covariance,
-                    initial_x0=initial_x0,
-                    initial_p0=initial_p0,
-                    control_vectors=control_vectors,
-                )
-            except (GradientDescentOutOfBoundError, GradientDescentExhaustedError):
-                use_gradient_descent = False
-                logging.warning("gradient descent failed. Trying brutal force method")
-        if not use_gradient_descent:
-            optimal_multiplier = get_optimal_filter_multiplier_brutal_force(
+        try:
+            optimal_multiplier = get_optimal_filter_multiplier_gradient_descent(
+                max_iter=max_iter * 10,
+                starting_filter_multiplier_log10=filter_tuning_multiplier_log10_width,
+                delta_filter_multiplier_log10=1e-3,
+                learning_rate_log10=1,
+                stopping_filter_multiplier_log10=-filter_tuning_multiplier_log10_width,
+                system_matrices=system_matrices,
+                measurement_matrices=measurement_matrices,
+                observations=observations,
+                model_error_covariance_matrix=model_error_covariance_matrix,
+                observation_error_covariance=observation_error_covariance,
+                initial_x0=initial_x0,
+                initial_p0=initial_p0,
+                control_vectors=control_vectors,
+            )
+
+        except (GradientDescentOutOfBoundError, GradientDescentExhaustedError) as err:
+            signal = get_double_kalman_filter_signal_in_parallel(
                 filter_multipliers=filter_multipliers,
                 system_matrices=system_matrices,
                 measurement_matrices=measurement_matrices,
@@ -120,6 +115,7 @@ def _double_kalman_filter_find_parameters(
                 initial_p0=initial_p0,
                 control_vectors=control_vectors,
             )
+            logging.warning(f"current {signal=}. {err}. Gradient descent failed")
 
         # calculate filter using best multiplier
         forward_new, backward_new, initial_p0 = double_kalman_filter_core_open_ends(
@@ -151,6 +147,21 @@ def _double_kalman_filter_find_parameters(
         initial_x0 = backward[0, :, 0].reshape(len(backward[0, :, 0]), 1)
         # determine if the best result has been achieved
         update_ratio_log10_list.append(update_ratio_log10)
+
+        ## debug -------------------
+        signal = get_double_kalman_filter_signal_in_parallel(
+            filter_multipliers=filter_multipliers,
+            system_matrices=system_matrices,
+            measurement_matrices=measurement_matrices,
+            observations=observations,
+            model_error_covariance_matrix=model_error_covariance_matrix,
+            observation_error_covariance=observation_error_covariance,
+            initial_x0=initial_x0,
+            initial_p0=initial_p0,
+            control_vectors=control_vectors,
+        )
+        breakpoint()
+        ## debug ---------------
 
         if stop_filter_scan(
             convergence_series=update_ratio_log10_list,
@@ -289,6 +300,7 @@ def get_optimal_filter_multiplier_gradient_descent(
 
     k_log10 = starting_filter_multiplier_log10
     number_of_iterations = 0
+    slope = 0
 
     while k_log10 > stopping_filter_multiplier_log10 and number_of_iterations < max_iter:
 
@@ -346,4 +358,6 @@ def get_optimal_filter_multiplier_gradient_descent(
             f"no local minimal between {starting_filter_multiplier_log10=} and {stopping_filter_multiplier_log10=}"
         )
     else:
-        raise GradientDescentExhaustedError(f"not able to find local minimal using gradient descent in {max_iter=}")
+        raise GradientDescentExhaustedError(
+            f"not able to find local minimal using gradient descent in {max_iter=} at {k_log10=} with {slope=}"
+        )

@@ -24,7 +24,7 @@ class ScanConfig:
     window_size_iter: Optional[int] = attrs.field(validator=[instance_of(int), ge(2)], default=5)
     convergence_log10_tol: Optional[float] = attrs.field(
         validator=instance_of(float),
-        default=-3.0,
+        default=-2.0,
     )
     filter_tuning_multiplier_granularity: Optional[int] = attrs.field(validator=[instance_of(int), gt(0)], default=100)
     filter_tuning_multiplier_log10_width: Optional[float] = attrs.field(
