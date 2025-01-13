@@ -3,3 +3,4 @@ pandas
 pandera
 attrs
 parfun
+scipy

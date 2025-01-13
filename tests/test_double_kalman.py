@@ -8,7 +8,7 @@ from double_sampling_kalman.factor_model.api import (
     initialize_filter,
     tune_filter_control,
 )
-from double_sampling_kalman.factor_model.objects import ScanConfig
+from double_sampling_kalman.factor_model.objects import ScanConfig, ScanConfigGD
 from tests.test_utility import get_simple_solution_numpy, get_simple_test_case_df
 
 

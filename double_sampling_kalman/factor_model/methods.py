@@ -2,6 +2,9 @@ from typing import List, Tuple
 
 import numpy as np
 
+from double_sampling_kalman.double_kalman.methods import double_kalman_filter_core
+from double_sampling_kalman.utility.info import log_function
+
 
 def moving_std(a, window_size=3) -> np.array:
     assert window_size > 1
@@ -23,15 +26,17 @@ def stop_filter_scan(convergence_series: List[float], window_size: int, converge
     return False
 
 
-def construct_multiplier_list(multiplier_granularity: int, multiplier_log10_width: float) -> List[float]:
+def construct_multiplier_list(
+    multiplier_granularity: int, multiplier_log10_width: float, base_log10: float = 0.0
+) -> List[float]:
     assert multiplier_granularity > 1
     assert multiplier_log10_width > 0
-    log_filter_multipliers = np.arange(
-        -multiplier_log10_width,
-        multiplier_log10_width,
+    log10_filter_multipliers = np.arange(
+        -multiplier_log10_width + base_log10,
+        multiplier_log10_width + base_log10,
         2 * multiplier_log10_width / int(multiplier_granularity),
-    ).tolist() + [multiplier_log10_width]
-    return np.pow(10, log_filter_multipliers)
+    ).tolist() + [multiplier_log10_width + base_log10]
+    return np.pow(10, log10_filter_multipliers)
 
 
 def calculate_filter_signal(
@@ -78,3 +83,32 @@ def zoom_in_signal_multipliers(
     )
     multiplier_log10_width = min(multiplier_log10_width + 0.5, max(np.log10(current_multipliers)))
     return filter_tuning_multiplier_granularity, multiplier_log10_width
+
+
+@log_function
+def get_double_kalman_filter_signal(
+    filter_multiplier: float,
+    observations: np.ndarray,
+    system_matrices: np.ndarray,
+    measurement_matrices: np.ndarray,
+    model_error_covariance_matrix: np.ndarray,
+    observation_error_covariance: np.ndarray,
+    initial_x0: np.ndarray,
+    initial_p0: np.ndarray,
+    control_vectors: np.ndarray,
+) -> float:
+    forward, backward, _ = double_kalman_filter_core(
+        system_matrices=system_matrices,
+        measurement_matrices=measurement_matrices,
+        observations=observations,
+        model_error_covariance_matrix=model_error_covariance_matrix / filter_multiplier,
+        observation_error_covariance=observation_error_covariance * filter_multiplier,
+        initial_x0=initial_x0,
+        initial_p0=initial_p0,
+        control_vectors=control_vectors,
+    )
+
+    return calculate_filter_diff_squared_log10(
+        x1=forward,
+        x2=backward,
+    )

@@ -4,8 +4,11 @@ import numpy as np
 from pandera import check_types
 from pandera.typing import DataFrame
 
-from double_sampling_kalman.factor_model.processes import _double_kalman_filter_find_parameters, _tune_filter_control
-from double_sampling_kalman.factor_model.objects import ScanConfig
+from double_sampling_kalman.factor_model.processes_for_filter import (
+    _double_kalman_filter_find_parameters,
+)
+from double_sampling_kalman.factor_model.processes_for_control import _tune_filter_control
+from double_sampling_kalman.factor_model.objects import ScanConfig, ScanConfigGD
 from double_sampling_kalman.single_kalman.methods import initialize_control_vectors
 from double_sampling_kalman.single_kalman.objects import DSKFInputCollection
 
@@ -84,7 +87,7 @@ def tune_filter(
         window_size_iter=scan_config.window_size_iter,
         convergence_log10_tol=scan_config.convergence_log10_tol,
         filter_tuning_multiplier_granularity=scan_config.filter_tuning_multiplier_granularity,
-        initial_filter_tuning_multiplier_log10_width=scan_config.initial_filter_tuning_multiplier_log10_width,
+        filter_tuning_multiplier_log10_width=scan_config.filter_tuning_multiplier_log10_width,
         observations=filter_input.observations,
         system_matrices=filter_input.system_matrices,
         measurement_matrices=filter_input.measurement_matrices,
